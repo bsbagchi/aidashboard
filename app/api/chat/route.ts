@@ -20,7 +20,8 @@ import { sanitizeUserText } from "@/lib/sanitize";
 import type { DealershipDataset } from "@/lib/dealership/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+/** Long chats + RAG + Ollama on small CPUs; self-hosted ignores this, Vercel honors it. */
+export const maxDuration = 300;
 
 const dataset = dealershipData as DealershipDataset;
 
@@ -290,6 +291,8 @@ export async function POST(req: Request) {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive",
+        // Tells nginx (and similar) not to buffer SSE — avoids "stuck" mid-stream replies.
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (e) {

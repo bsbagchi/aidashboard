@@ -76,32 +76,40 @@ export function ChatAssistant({
       const decoder = new TextDecoder();
       let buffer = "";
       let acc = "";
+
+      const handleSseBlock = (block: string) => {
+        const trimmed = block.trim();
+        if (!trimmed.startsWith("data: ")) return;
+        let payload: { type?: string; text?: string; message?: string };
+        try {
+          payload = JSON.parse(trimmed.slice(6)) as typeof payload;
+        } catch {
+          return;
+        }
+        if (payload.type === "token" && payload.text) {
+          acc += payload.text;
+          setMessages((m) =>
+            m.map((x) =>
+              x.id === assistantId ? { ...x, content: acc } : x,
+            ),
+          );
+        }
+        if (payload.type === "error") {
+          throw new Error(payload.message ?? "Stream error");
+        }
+      };
+
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        if (value) buffer += decoder.decode(value, { stream: true });
+        if (done) {
+          buffer += decoder.decode();
+          for (const block of buffer.split("\n\n")) handleSseBlock(block);
+          break;
+        }
         const parts = buffer.split("\n\n");
         buffer = parts.pop() ?? "";
-        for (const block of parts) {
-          if (!block.startsWith("data: ")) continue;
-          let payload: { type?: string; text?: string; message?: string };
-          try {
-            payload = JSON.parse(block.slice(6)) as typeof payload;
-          } catch {
-            continue;
-          }
-          if (payload.type === "token" && payload.text) {
-            acc += payload.text;
-            setMessages((m) =>
-              m.map((x) =>
-                x.id === assistantId ? { ...x, content: acc } : x,
-              ),
-            );
-          }
-          if (payload.type === "error") {
-            throw new Error(payload.message ?? "Stream error");
-          }
-        }
+        for (const block of parts) handleSseBlock(block);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Request failed";
