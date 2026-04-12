@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChatAssistant } from "@/components/ai/chat-assistant";
-import { NlFilterBar } from "@/components/ai/nl-filter-bar";
 import type { ChatContextFilter } from "@/lib/ai/types";
 import {
   getBranchTable,
@@ -116,7 +115,6 @@ export function DealershipDashboard({ data }: { data: DealershipDataset }) {
     >
       <div className="flex flex-col gap-6">
         <FilterBar branches={data.branches} />
-        <NlFilterBar />
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Synthetic dataset ({data.metadata.date_range}). Metrics use

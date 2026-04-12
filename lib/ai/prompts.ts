@@ -1,8 +1,14 @@
 import { getRagChunkScope } from "@/lib/ai/env";
 
+export type BuildRagSystemOptions = {
+  /** First chunk contains app-computed metrics (intent routing). */
+  hasPredefinedAnalytics?: boolean;
+};
+
 export function buildRagSystemInstruction(
   filterSummary: string,
   retrievedChunks: string[],
+  options?: BuildRagSystemOptions,
 ): string {
   const joined = retrievedChunks.join("\n---\n").trim();
   const hasContext = joined.length > 0;
@@ -14,6 +20,12 @@ export function buildRagSystemInstruction(
     "Prefer short bullets for metrics. Name branches as \"Name [B#]\" when the context includes branch IDs.",
     "If the user's question is vague, ask one short clarifying question (branch, date range, or metric) before a long analysis.",
   ];
+
+  if (options?.hasPredefinedAnalytics) {
+    shared.push(
+      "PREDEFINED blocks (lines starting with PREDEFINED) are exact figures computed by the app for this dashboard filter — treat them as authoritative for rankings and totals; use other retrieved text for detail and \"why\".",
+    );
+  }
 
   if (getRagChunkScope() === "minimal") {
     shared.push(

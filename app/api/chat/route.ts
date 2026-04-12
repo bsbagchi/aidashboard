@@ -11,8 +11,15 @@ import {
 import { userFacingGeminiError, withGeminiRetry } from "@/lib/ai/gemini-quota";
 import { bedrockConverseStream } from "@/lib/bedrock/client";
 import { ollamaChatStream } from "@/lib/ollama/client";
+import {
+  classifyIntentHeuristic,
+  classifyIntentLlm,
+  shouldUseLlmIntentFallback,
+} from "@/lib/ai/intent";
+import { buildPredefinedAnalyticsBlock } from "@/lib/ai/predefined-analytics";
 import { buildRagSystemInstruction } from "@/lib/ai/prompts";
 import type { ChatContextFilter } from "@/lib/ai/types";
+import { parseRangeFromQuery } from "@/lib/dealership/dates";
 import { getClientKey, rateLimit } from "@/lib/rate-limit";
 import { retrieveContextTexts } from "@/lib/rag/retrieve";
 import { ensureRagSynced } from "@/lib/rag/sync";
@@ -219,22 +226,50 @@ export async function POST(req: Request) {
       { status: 503 },
     );
   }
+  const range = parseRangeFromQuery(
+    body.context?.from,
+    body.context?.to,
+  );
+  const branchId = body.context?.branchId ?? null;
+  let intent = classifyIntentHeuristic(lastUser.content);
+  if (intent === "general" && shouldUseLlmIntentFallback()) {
+    try {
+      const fromLlm = await classifyIntentLlm(lastUser.content);
+      if (fromLlm) intent = fromLlm;
+    } catch (e) {
+      console.warn("[chat] intent LLM fallback failed", e);
+    }
+  }
+  const predefined = buildPredefinedAnalyticsBlock(
+    intent,
+    dataset,
+    range,
+    branchId,
+  );
+
   let chunks: string[] = [];
   try {
     await ensureRagSynced(dataset);
     const hits = await retrieveContextTexts(lastUser.content, 14);
     chunks = hits.map((h) => h.text);
+    if (predefined) {
+      chunks = [predefined, ...chunks];
+    }
   } catch (e) {
     console.warn(
       "[chat] RAG unavailable (Pinecone/embeddings); answering without retrieved chunks.",
       e,
     );
+    if (predefined) {
+      chunks = [predefined];
+    }
   }
 
   try {
     const systemInstruction = buildRagSystemInstruction(
       filterSummary(body.context),
       chunks,
+      { hasPredefinedAnalytics: Boolean(predefined) },
     );
 
     const encoder = new TextEncoder();
