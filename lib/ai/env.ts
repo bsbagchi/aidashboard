@@ -27,7 +27,7 @@ export function getPineconeIndexName(): string {
   return process.env.PINECONE_INDEX_NAME ?? "dealership-rag";
 }
 
-export type ChatProvider = "gemini" | "anthropic" | "ollama";
+export type ChatProvider = "gemini" | "anthropic" | "ollama" | "bedrock";
 
 export type EmbeddingProvider = "gemini" | "ollama";
 
@@ -36,7 +36,8 @@ function normalizeChatProviderToken(
 ): ChatProvider | undefined {
   if (raw == null || raw === "") return undefined;
   const t = raw.trim().toLowerCase();
-  if (t === "anthropic" || t === "gemini" || t === "ollama") return t;
+  if (t === "anthropic" || t === "gemini" || t === "ollama" || t === "bedrock")
+    return t;
   return undefined;
 }
 
@@ -51,9 +52,12 @@ function normalizeEmbeddingProviderToken(
 
 /** Local Ollama HTTP API (default http://127.0.0.1:11434). No trailing slash. */
 export function getOllamaBaseUrl(): string {
-  const raw =
+  let raw =
     process.env.OLLAMA_BASE_URL?.trim() || "http://127.0.0.1:11434";
-  return raw.replace(/\/$/, "");
+  raw = raw.replace(/\/$/, "");
+  // Fix common typo: `http://host/:11434` parses as port 80 + path `/:11434`, not port 11434.
+  raw = raw.replace(/^([^:]+:\/\/[^/]+)\/:(\d+)$/, "$1:$2");
+  return raw;
 }
 
 /** Chat / generate model (e.g. llama3.2:1b, phi3:mini). */
@@ -64,6 +68,48 @@ export function getOllamaChatModel(): string {
 /** Embedding model (e.g. nomic-embed-text — typically 768 dimensions). */
 export function getOllamaEmbedModel(): string {
   return process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text";
+}
+
+/**
+ * Amazon Bedrock long-term API key (Bearer). Prefer AWS_BEARER_TOKEN_BEDROCK per AWS docs;
+ * `aws_bedrock` is supported as an alias.
+ */
+export function getBedrockBearerToken(): string | undefined {
+  const raw =
+    process.env.AWS_BEARER_TOKEN_BEDROCK?.trim() ||
+    process.env.aws_bedrock?.trim() ||
+    process.env.AWS_BEDROCK_API_KEY?.trim();
+  if (!raw) return undefined;
+  return raw.replace(/^["']|["']$/g, "");
+}
+
+export function getBedrockRegion(): string {
+  return (
+    process.env.AWS_REGION?.trim() ||
+    process.env.BEDROCK_REGION?.trim() ||
+    "us-east-1"
+  );
+}
+
+/**
+ * Model ID for Converse — typically an **inference profile** (global / us / eu) per Bedrock console.
+ * Default: **Claude Haiku 4.5** (cheaper/faster than Opus). Override with `BEDROCK_CHAT_MODEL`.
+ *
+ * Examples:
+ * - Haiku 4.5 (global): `global.anthropic.claude-haiku-4-5-20251001-v1:0`
+ * - Opus 4.5 (global): `global.anthropic.claude-opus-4-5-20251101-v1:0`
+ *
+ * Marketplace / payment errors affect model access until billing is set in AWS — switching tier does not bypass that.
+ */
+export function getBedrockModelId(): string {
+  return (
+    process.env.BEDROCK_CHAT_MODEL?.trim() ||
+    "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+}
+
+export function isBedrockConfigured(): boolean {
+  return Boolean(getBedrockBearerToken());
 }
 
 export function isOllamaChatEnabled(): boolean {
@@ -95,4 +141,13 @@ export function getEmbeddingProvider(): EmbeddingProvider {
   if (explicit) return explicit;
   if (isOllamaChatEnabled() && !getGeminiApiKey()) return "ollama";
   return "gemini";
+}
+
+/** RAG indexing scope: `full` embeds leads + deliveries; `minimal` only metadata, branches, targets (fewer embed calls, less detail). */
+export type RagChunkScope = "full" | "minimal";
+
+export function getRagChunkScope(): RagChunkScope {
+  const raw = process.env.RAG_CHUNK_SCOPE?.trim().toLowerCase();
+  if (raw === "minimal" || raw === "defaults") return "minimal";
+  return "full";
 }

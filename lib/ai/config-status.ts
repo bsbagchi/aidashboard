@@ -1,11 +1,13 @@
 import {
   getAnthropicApiKey,
+  getBedrockModelId,
   getChatProvider,
   getEmbeddingProvider,
   getGeminiApiKey,
   getOllamaChatModel,
   getOllamaEmbedModel,
   getPineconeIndexName,
+  isBedrockConfigured,
   getVectorDbApiKey,
 } from "@/lib/ai/env";
 
@@ -13,7 +15,8 @@ import {
 export function getPublicAiConfigSnapshot(): {
   geminiConfigured: boolean;
   anthropicConfigured: boolean;
-  chatProvider: "gemini" | "anthropic" | "ollama";
+  bedrockConfigured: boolean;
+  chatProvider: "gemini" | "anthropic" | "ollama" | "bedrock";
   embeddingProvider: "gemini" | "ollama";
   pineconeConfigured: boolean;
   pineconeIndexName: string;
@@ -33,6 +36,7 @@ export function getPublicAiConfigSnapshot(): {
   return {
     geminiConfigured: Boolean(getGeminiApiKey()),
     anthropicConfigured: Boolean(getAnthropicApiKey()),
+    bedrockConfigured: isBedrockConfigured(),
     chatProvider,
     embeddingProvider,
     pineconeConfigured: Boolean(getVectorDbApiKey()),
@@ -41,17 +45,23 @@ export function getPublicAiConfigSnapshot(): {
       chat:
         chatProvider === "ollama"
           ? ollamaChat
-          : chatProvider === "anthropic"
-            ? process.env.ANTHROPIC_CHAT_MODEL ?? "claude-3-5-sonnet-20241022"
-            : geminiChat,
+          : chatProvider === "bedrock"
+            ? getBedrockModelId()
+            : chatProvider === "anthropic"
+              ? process.env.ANTHROPIC_CHAT_MODEL ?? "claude-3-5-sonnet-20241022"
+              : geminiChat,
       insights:
         chatProvider === "ollama"
           ? ollamaChat
-          : process.env.GEMINI_INSIGHTS_MODEL ?? "gemini-2.0-flash-lite",
+          : chatProvider === "bedrock"
+            ? getBedrockModelId()
+            : process.env.GEMINI_INSIGHTS_MODEL ?? "gemini-2.0-flash-lite",
       parse:
         chatProvider === "ollama"
           ? ollamaChat
-          : process.env.GEMINI_PARSE_MODEL ?? "gemini-2.0-flash-lite",
+          : chatProvider === "bedrock"
+            ? getBedrockModelId()
+            : process.env.GEMINI_PARSE_MODEL ?? "gemini-2.0-flash-lite",
       embedding:
         embeddingProvider === "ollama"
           ? getOllamaEmbedModel()

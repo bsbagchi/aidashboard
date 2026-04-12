@@ -13,6 +13,7 @@ describe("getPublicAiConfigSnapshot", () => {
   it("reports no gemini when key missing", () => {
     const s = getPublicAiConfigSnapshot();
     expect(s.geminiConfigured).toBe(false);
+    expect(s.bedrockConfigured).toBe(false);
     expect(s.models.chat).toBe("gemini-2.0-flash-lite");
   });
 

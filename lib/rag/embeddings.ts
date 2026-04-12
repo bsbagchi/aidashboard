@@ -73,8 +73,9 @@ async function embedOne(
 }
 
 function ollamaEmbedConcurrency(): number {
-  const n = Number(process.env.OLLAMA_EMBED_CONCURRENCY ?? "2");
-  return Number.isFinite(n) && n >= 1 ? Math.min(8, Math.floor(n)) : 2;
+  // Default 4: remote Ollama benefits from modest parallelism (override via env).
+  const n = Number(process.env.OLLAMA_EMBED_CONCURRENCY ?? "4");
+  return Number.isFinite(n) && n >= 1 ? Math.min(8, Math.floor(n)) : 4;
 }
 
 async function embedTextsOllama(texts: string[]): Promise<number[][]> {

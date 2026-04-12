@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:bedrock": "npx tsx --tsconfig tsconfig.json scripts/check-bedrock.ts",
+    "check:gemini": "npx tsx --tsconfig tsconfig.json scripts/check-gemini.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1029.0",
     "@google/generative-ai": "^0.24.1",
     "@pinecone-database/pinecone": "^7.2.0",
     "@tanstack/react-query": "^5.99.0",

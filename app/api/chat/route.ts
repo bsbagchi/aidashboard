@@ -4,10 +4,12 @@ import dealershipData from "@/doc/dealership_data.json";
 import {
   type ChatProvider,
   getAnthropicApiKey,
+  getBedrockBearerToken,
   getChatProvider,
   getGeminiApiKey,
 } from "@/lib/ai/env";
 import { userFacingGeminiError, withGeminiRetry } from "@/lib/ai/gemini-quota";
+import { bedrockConverseStream } from "@/lib/bedrock/client";
 import { ollamaChatStream } from "@/lib/ollama/client";
 import { buildRagSystemInstruction } from "@/lib/ai/prompts";
 import type { ChatContextFilter } from "@/lib/ai/types";
@@ -110,6 +112,9 @@ function userFacingChatError(e: unknown, provider: ChatProvider): string {
   if (provider === "ollama") {
     return e instanceof Error ? e.message : "Ollama request failed";
   }
+  if (provider === "bedrock") {
+    return e instanceof Error ? e.message : "Amazon Bedrock request failed";
+  }
   return userFacingGeminiError(e);
 }
 
@@ -120,6 +125,21 @@ async function streamOllama(
   controller: ReadableStreamDefaultController<Uint8Array>,
 ) {
   await ollamaChatStream(systemInstruction, messages, (text) => {
+    controller.enqueue(
+      encoder.encode(
+        `data: ${JSON.stringify({ type: "token", text })}\n\n`,
+      ),
+    );
+  });
+}
+
+async function streamBedrock(
+  systemInstruction: string,
+  messages: IncomingMessage[],
+  encoder: TextEncoder,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+) {
+  await bedrockConverseStream(systemInstruction, messages, (text) => {
     controller.enqueue(
       encoder.encode(
         `data: ${JSON.stringify({ type: "token", text })}\n\n`,
@@ -189,6 +209,15 @@ export async function POST(req: Request) {
       { status: 503 },
     );
   }
+  if (provider === "bedrock" && !getBedrockBearerToken()) {
+    return Response.json(
+      {
+        error:
+          "Server misconfigured: set AWS_BEARER_TOKEN_BEDROCK or aws_bedrock (Amazon Bedrock API key)",
+      },
+      { status: 503 },
+    );
+  }
   let chunks: string[] = [];
   try {
     await ensureRagSynced(dataset);
@@ -220,6 +249,13 @@ export async function POST(req: Request) {
             );
           } else if (provider === "ollama") {
             await streamOllama(
+              systemInstruction,
+              sanitized,
+              encoder,
+              controller,
+            );
+          } else if (provider === "bedrock") {
+            await streamBedrock(
               systemInstruction,
               sanitized,
               encoder,

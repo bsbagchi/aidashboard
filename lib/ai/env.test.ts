@@ -3,6 +3,7 @@ import {
   getChatProvider,
   getEmbeddingProvider,
   getOllamaBaseUrl,
+  getRagChunkScope,
 } from "./env";
 
 describe("Ollama / provider env", () => {
@@ -26,6 +27,11 @@ describe("Ollama / provider env", () => {
   it("normalizes AI_CHAT_PROVIDER case and whitespace", () => {
     vi.stubEnv("AI_CHAT_PROVIDER", " Ollama ");
     expect(getChatProvider()).toBe("ollama");
+  });
+
+  it("uses bedrock when AI_CHAT_PROVIDER=bedrock", () => {
+    vi.stubEnv("AI_CHAT_PROVIDER", "bedrock");
+    expect(getChatProvider()).toBe("bedrock");
   });
 
   it("uses ollama when OLLAMA_ENABLED=true", () => {
@@ -57,5 +63,22 @@ describe("Ollama / provider env", () => {
   it("defaults Ollama base URL", () => {
     vi.stubEnv("OLLAMA_BASE_URL", "");
     expect(getOllamaBaseUrl()).toBe("http://127.0.0.1:11434");
+  });
+
+  it("fixes host/:port typo so port is not treated as path", () => {
+    vi.stubEnv("OLLAMA_BASE_URL", "http://18.61.104.8/:11434");
+    expect(getOllamaBaseUrl()).toBe("http://18.61.104.8:11434");
+  });
+
+  it("defaults RAG_CHUNK_SCOPE to full", () => {
+    vi.stubEnv("RAG_CHUNK_SCOPE", "");
+    expect(getRagChunkScope()).toBe("full");
+  });
+
+  it("maps RAG_CHUNK_SCOPE minimal and defaults alias", () => {
+    vi.stubEnv("RAG_CHUNK_SCOPE", "minimal");
+    expect(getRagChunkScope()).toBe("minimal");
+    vi.stubEnv("RAG_CHUNK_SCOPE", "defaults");
+    expect(getRagChunkScope()).toBe("minimal");
   });
 });

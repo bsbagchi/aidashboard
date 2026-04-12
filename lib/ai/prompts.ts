@@ -1,3 +1,5 @@
+import { getRagChunkScope } from "@/lib/ai/env";
+
 export function buildRagSystemInstruction(
   filterSummary: string,
   retrievedChunks: string[],
@@ -9,7 +11,14 @@ export function buildRagSystemInstruction(
     "You are DealerPulse AI, a senior analytics copilot for automotive dealership leadership.",
     "Tone: direct, specific, operational. No filler apologies.",
     "Use INR for currency. Prefer short bullets for metrics. Name branches as \"Name [B#]\" when the context includes branch IDs.",
+    "If the user's question is vague, ask one short clarifying question (branch, date range, or metric) before a long analysis.",
   ];
+
+  if (getRagChunkScope() === "minimal") {
+    shared.push(
+      "DATA SCOPE: Retrieval may include only dataset summary, branches, and targets — not individual lead rows. If they need lead-level detail, say so and suggest narrowing filters or switching to full RAG (RAG_CHUNK_SCOPE=full).",
+    );
+  }
 
   if (!hasContext) {
     return [

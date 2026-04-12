@@ -4,8 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ChatContextFilter, ChatMessage } from "@/lib/ai/types";
 import type { Branch } from "@/lib/dealership/types";
-import { MessageMarkdown } from "./message-markdown";
-import { QuerySuggestionChips } from "./query-suggestions";
+import { MessageMarkdown } from "@/components/ai/message-markdown";
+import { QuerySuggestionChips } from "@/components/ai/query-suggestions";
 
 function uid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -123,22 +123,26 @@ export function ChatAssistant({
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-lg ring-2 ring-white/30 transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-400"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-teal-600 to-teal-800 text-white shadow-lg shadow-teal-900/25 ring-2 ring-white/40 transition hover:from-teal-500 hover:to-teal-700 hover:shadow-xl focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-400"
         onClick={() => onOpenChange(!open)}
       >
-        <span className="sr-only">Open AI assistant</span>
+        <span className="sr-only">Open chat assistant</span>
         <svg
-          width="24"
-          height="24"
+          className="h-7 w-7"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden
         >
           <path
-            d="M12 3C7.03 3 3 7.03 3 12c0 8 9 9 9 9s9-1 9-9c0-4.97-4.03-9-9-9Zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6Z"
-            fill="currentColor"
+            d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinejoin="round"
           />
+          <circle cx="9" cy="11" r="1.15" fill="currentColor" />
+          <circle cx="12" cy="11" r="1.15" fill="currentColor" />
+          <circle cx="15" cy="11" r="1.15" fill="currentColor" />
         </svg>
       </button>
 

@@ -1,6 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dealershipData from "@/doc/dealership_data.json";
-import { getChatProvider, getGeminiApiKey } from "@/lib/ai/env";
+import {
+  getBedrockBearerToken,
+  getChatProvider,
+  getGeminiApiKey,
+} from "@/lib/ai/env";
+import { bedrockConverseText } from "@/lib/bedrock/client";
 import { buildAnalyticsSummaryJson } from "@/lib/ai/analytics-summary";
 import { withGeminiRetry } from "@/lib/ai/gemini-quota";
 import { buildFallbackInsights } from "@/lib/ai/fallback-insights";
@@ -28,7 +33,13 @@ export async function POST(req: Request) {
 
   const provider = getChatProvider();
   const key = getGeminiApiKey();
-  if (provider !== "ollama" && !key) {
+  if (provider === "bedrock" && !getBedrockBearerToken()) {
+    return Response.json(
+      { error: "AWS_BEARER_TOKEN_BEDROCK or aws_bedrock is not configured" },
+      { status: 503 },
+    );
+  }
+  if (provider !== "ollama" && provider !== "bedrock" && !key) {
     return Response.json(
       { error: "GEMINI_API_KEY is not configured" },
       { status: 503 },
@@ -67,6 +78,11 @@ export async function POST(req: Request) {
     let raw: string;
     if (provider === "ollama") {
       raw = await ollamaGenerate(prompt, { json: true, temperature: 0.3 });
+    } else if (provider === "bedrock") {
+      raw = await bedrockConverseText(prompt, {
+        temperature: 0.3,
+        maxTokens: 8192,
+      });
     } else {
       const genAI = new GoogleGenerativeAI(key!);
       const model = genAI.getGenerativeModel({

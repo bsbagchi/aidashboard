@@ -1,5 +1,5 @@
 import type { DealershipDataset } from "@/lib/dealership/types";
-import { getVectorDbApiKey } from "@/lib/ai/env";
+import { getRagChunkScope, getVectorDbApiKey } from "@/lib/ai/env";
 import { buildRagChunks } from "./chunks";
 import { embedTexts } from "./embeddings";
 import { MemoryVectorStore } from "./memory-store";
@@ -24,7 +24,7 @@ export function isPineconeActive(): boolean {
 }
 
 async function syncPinecone(data: DealershipDataset): Promise<void> {
-  const chunks = buildRagChunks(data);
+  const chunks = buildRagChunks(data, getRagChunkScope());
   const vectors = await embedTexts(chunks.map((c) => c.text));
   await pineconeUpsertVectors(
     chunks.map((c, i) => ({
@@ -37,7 +37,7 @@ async function syncPinecone(data: DealershipDataset): Promise<void> {
 
 async function syncMemory(data: DealershipDataset): Promise<void> {
   if (!g.__ragMemory) g.__ragMemory = new MemoryVectorStore();
-  const chunks = buildRagChunks(data);
+  const chunks = buildRagChunks(data, getRagChunkScope());
   const vectors = await embedTexts(chunks.map((c) => c.text));
   await g.__ragMemory.replaceAll(
     chunks.map((c, i) => ({
@@ -49,9 +49,15 @@ async function syncMemory(data: DealershipDataset): Promise<void> {
 }
 
 async function doSync(data: DealershipDataset): Promise<void> {
-  const chunks = buildRagChunks(data);
+  const chunks = buildRagChunks(data, getRagChunkScope());
   const expected = chunks.length;
   const tryPinecone = isPineconeActive();
+
+  if (process.env.RAG_FORCE_MEMORY === "1" || process.env.RAG_FORCE_MEMORY === "true") {
+    console.info(
+      "[RAG] Pinecone disabled (RAG_FORCE_MEMORY=true); vectors stay in process RAM only.",
+    );
+  }
 
   if (tryPinecone) {
     try {

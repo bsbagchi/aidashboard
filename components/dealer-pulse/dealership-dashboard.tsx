@@ -2,14 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AiInsightsPanel } from "@/components/ai/ai-insights";
 import { ChatAssistant } from "@/components/ai/chat-assistant";
 import { NlFilterBar } from "@/components/ai/nl-filter-bar";
 import type { ChatContextFilter } from "@/lib/ai/types";
 import {
   getBranchTable,
   getFunnelForLeadsCreatedInRange,
-  getLargestTargetGap,
   getLeadsTouchingRange,
   getMonthlyTrend,
   getOverviewKpis,
@@ -24,7 +22,6 @@ import { AppShell } from "./app-shell";
 import { BranchTable } from "./branch-table";
 import { FilterBar } from "./filter-bar";
 import { FunnelChart } from "./funnel-chart";
-import { InsightsPanel } from "./insights-panel";
 import { KpiCards } from "./kpi-cards";
 import { RepTable } from "./rep-table";
 import { SourceChart } from "./source-chart";
@@ -88,10 +85,6 @@ export function DealershipDashboard({ data }: { data: DealershipDataset }) {
     () => getStaleOpenLeads(data, range, branchFilter, 7),
     [data, range, branchFilter],
   );
-  const targetGap = useMemo(
-    () => getLargestTargetGap(data, range),
-    [data, range],
-  );
   const sources = useMemo(
     () => sourceBreakdown(data.leads, range),
     [data.leads, range],
@@ -138,13 +131,6 @@ export function DealershipDashboard({ data }: { data: DealershipDataset }) {
           </button>
         </div>
         <KpiCards kpis={kpis} />
-        <InsightsPanel
-          staleLeads={stale}
-          targetGap={targetGap}
-          branchFilter={branchFilter}
-          queryString={qs}
-        />
-        <AiInsightsPanel from={from} to={to} branchId={branchFilter} />
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <TrendChart data={trend} />
           <FunnelChart data={funnel} />

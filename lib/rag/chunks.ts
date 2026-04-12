@@ -1,3 +1,4 @@
+import type { RagChunkScope } from "@/lib/ai/env";
 import type { DealershipDataset } from "@/lib/dealership/types";
 import type { RagChunk } from "./types";
 
@@ -10,8 +11,12 @@ function branchName(data: DealershipDataset, id: string): string {
 
 /**
  * Deterministic text chunks for embedding. Keep each chunk under ~3.5k chars for vector metadata limits.
+ * `minimal` scope: metadata + branches + targets only (far fewer Gemini/Ollama embed calls; no lead/delivery rows).
  */
-export function buildRagChunks(data: DealershipDataset): RagChunk[] {
+export function buildRagChunks(
+  data: DealershipDataset,
+  scope: RagChunkScope = "full",
+): RagChunk[] {
   const chunks: RagChunk[] = [];
 
   chunks.push({
@@ -35,6 +40,18 @@ export function buildRagChunks(data: DealershipDataset): RagChunk[] {
       ].join("\n"),
       metadata: { type: "branch", branchId: b.id },
     });
+  }
+
+  if (scope === "minimal") {
+    for (const t of data.targets) {
+      const bn = branchName(data, t.branch_id);
+      chunks.push({
+        id: `target-${t.branch_id}-${t.month}`,
+        text: `Targets for ${bn} (${t.branch_id}) month ${t.month}: units=${t.target_units}, revenue=${t.target_revenue}`,
+        metadata: { type: "target", branchId: t.branch_id, month: t.month },
+      });
+    }
+    return chunks;
   }
 
   for (let i = 0; i < data.leads.length; i += LEADS_PER_CHUNK) {
