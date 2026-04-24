@@ -2,6 +2,11 @@ import Link from "next/link";
 import type { RepRow } from "@/lib/dealership/analytics";
 import { formatCompactINR } from "@/lib/dealership/format";
 
+function conversionPct(row: RepRow): string {
+  if (row.newLeads <= 0) return "0%";
+  return `${Math.round((row.deliveredUnits / row.newLeads) * 100)}%`;
+}
+
 export function RepTable({
   rows,
   searchParams,
@@ -38,6 +43,9 @@ export function RepTable({
               Delivered
             </th>
             <th scope="col" className="px-4 py-3 text-right">
+              Lead conversion
+            </th>
+            <th scope="col" className="px-4 py-3 text-right">
               Revenue
             </th>
           </tr>
@@ -64,6 +72,12 @@ export function RepTable({
               <td className="px-4 py-3 text-right tabular-nums">{r.newLeads}</td>
               <td className="px-4 py-3 text-right tabular-nums">
                 {r.deliveredUnits}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums">
+                <div className="font-medium">{conversionPct(r)}</div>
+                <div className="text-xs text-zinc-500">
+                  {r.deliveredUnits}/{r.newLeads} delivered
+                </div>
               </td>
               <td className="px-4 py-3 text-right tabular-nums">
                 {formatCompactINR(r.deliveredRevenue)}
